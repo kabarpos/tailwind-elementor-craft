@@ -21,87 +21,91 @@ const Index = () => {
     }
 
     try {
-      // Basic conversion logic - this is a simplified version
-      // In a real application, you'd need more sophisticated parsing
+      // Parse HTML input
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlInput, 'text/html');
       
+      // Format sesuai struktur Elementor terbaru
       const elementorJson = {
-        version: "0.4",
         title: "Converted Layout",
         type: "page",
+        version: "0.4",
+        page_settings: [],
         content: convertElementToElementor(doc.body)
       };
 
       setJsonOutput(JSON.stringify(elementorJson, null, 2));
       
       toast({
-        title: "Success",
+        title: "Success", 
         description: "HTML converted to Elementor JSON successfully!"
       });
     } catch (error) {
+      console.error("Conversion error:", error);
       toast({
         title: "Error",
-        description: "Failed to convert HTML. Please check your input.",
+        description: `Failed to convert HTML: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     }
   };
 
-  const convertElementToElementor = (element: Element): any => {
-    const children: any[] = [];
+  const convertElementToElementor = (element: Element): any[] => {
+    const elements: any[] = [];
     
     Array.from(element.children).forEach(child => {
       if (child.tagName === 'DIV') {
-        children.push({
+        elements.push({
           id: generateId(),
           elType: "container",
+          isInner: false,
           settings: extractTailwindSettings(child),
           elements: convertElementToElementor(child)
         });
       } else if (child.tagName === 'H1' || child.tagName === 'H2' || child.tagName === 'H3') {
-        children.push({
+        elements.push({
           id: generateId(),
           elType: "widget",
           widgetType: "heading",
           settings: {
-            title: child.textContent,
+            title: child.textContent || "",
             size: child.tagName.toLowerCase(),
             ...extractTailwindSettings(child)
           }
         });
       } else if (child.tagName === 'P') {
-        children.push({
+        elements.push({
           id: generateId(),
-          elType: "widget",
+          elType: "widget", 
           widgetType: "text-editor",
           settings: {
-            editor: child.textContent,
+            editor: child.textContent || "",
             ...extractTailwindSettings(child)
           }
         });
       } else if (child.tagName === 'BUTTON') {
-        children.push({
+        elements.push({
           id: generateId(),
           elType: "widget",
-          widgetType: "button",
+          widgetType: "button", 
           settings: {
-            text: child.textContent,
+            text: child.textContent || "",
             ...extractTailwindSettings(child)
           }
         });
-      } else {
-        // For other elements, treat as generic container
-        children.push({
+      } else if (child.children.length > 0) {
+        // For other elements with children, treat as container
+        elements.push({
           id: generateId(),
           elType: "container",
+          isInner: false,
           settings: extractTailwindSettings(child),
           elements: convertElementToElementor(child)
         });
       }
     });
 
-    return children;
+    return elements;
   };
 
   const extractTailwindSettings = (element: Element): any => {
